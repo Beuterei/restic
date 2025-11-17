@@ -11,7 +11,7 @@ services:
       BACKUP_CRON: "0 30 3 * * *"
       POST_COMMANDS_EXIT: |-
         if [ -f /tmp/stopped_containers.txt ] && [ -s /tmp/stopped_containers.txt ]; then
-          docker start $(cat /tmp/stopped_containers.txt)
+          docker start $$(cat /tmp/stopped_containers.txt)
           rm -f /tmp/stopped_containers.txt
         fi
       POST_COMMANDS_FAILURE: |-
@@ -21,9 +21,9 @@ services:
       POST_COMMANDS_SUCCESS: |-
         curl -s -X POST --data "{\"title\": \"Backup completed\", \"body\": \"Backup completed for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
       PRE_COMMANDS: |-
-        docker ps --filter "status=running" --format "{{.ID}} {{.Names}}" | grep -vE "restic|notify" | awk '{print $1}' > /tmp/stopped_containers.txt
+        docker ps --filter "status=running" --format "{{.ID}} {{.Names}}" | grep -vE "restic|notify" | awk '{print $$1}' > /tmp/stopped_containers.txt
         if [ -s /tmp/stopped_containers.txt ]; then
-          docker stop $(cat /tmp/stopped_containers.txt)
+          docker stop $$(cat /tmp/stopped_containers.txt)
         fi
       RESTIC_BACKUP_ARGS: >-
         --tag ${RESTIC_BACKUP_TAG-docker-volumes}
