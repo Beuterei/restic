@@ -53,7 +53,7 @@ Add `COMPOSE_PROFILES=prune,check` to your `.env.local` file to enable prune and
 3. Start docker-compose
 
 ```sh
-docker-compose up --build
+docker-compose --env-file ./.env.local up --build
 ```
 
 ## Getting Started Production
@@ -81,7 +81,7 @@ Add `COMPOSE_PROFILES=prune,check` to your `.env.local` file to enable prune and
 3. Start docker-compose
 
 ```sh
-docker-compose up --build -d
+docker-compose --env-file ./.env.local up --build -d
 ```
 
 (Set `COMPOSE_PROFILES=` empty or omit it to disable prune and check)
@@ -133,49 +133,6 @@ This allows you to:
 - **Optimize resources:** Only run maintenance where needed
 
 Configure the cron schedules (`RESTIC_BACKUP_CRON`, `RESTIC_PRUNE_CRON`, `RESTIC_CHECK_CRON`) appropriately for each host based on their assigned roles.
-
-### Service Control
-
-The `restic-prune` and `restic-check` services are controlled via Docker Compose profiles.
-
-- **Single host:** Always enable both services (see [Single Host vs Multi-Host Configuration](#single-host-vs-multi-host-configuration))
-- **Multi-host:** Use profiles to control which host runs which services (see [Single Host vs Multi-Host Configuration](#single-host-vs-multi-host-configuration))
-
-**To enable prune and check services (recommended):**
-
-Add to your `.env.local` file:
-
-```sh
-COMPOSE_PROFILES=prune,check
-```
-
-Or use the `--profile` flag:
-
-```sh
-docker-compose --profile prune --profile check up --build
-```
-
-**To disable prune and check services:**
-
-Simply don't set `COMPOSE_PROFILES` or set it to empty:
-
-```sh
-# In .env.local, either omit COMPOSE_PROFILES or set:
-COMPOSE_PROFILES=
-
-# Or use docker-compose without profiles
-docker-compose up --build
-```
-
-**To enable only one service:**
-
-```sh
-# Only prune
-COMPOSE_PROFILES=prune docker-compose up --build
-
-# Only check
-COMPOSE_PROFILES=check docker-compose up --build
-```
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
