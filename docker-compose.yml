@@ -8,7 +8,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      BACKUP_CRON: "0 30 3 * * *"
+      BACKUP_CRON: ${RESTIC_BACKUP_CRON-"0 30 3 * * *"}
       POST_COMMANDS_EXIT: if [ -f /tmp/stopped_containers.txt ] && [ -s /tmp/stopped_containers.txt ]; then docker start $$(cat /tmp/stopped_containers.txt); rm -f /tmp/stopped_containers.txt; fi
       POST_COMMANDS_FAILURE: |-
         curl -s -X POST --data "{\"title\": \"Backup failed\", \"body\": \"Backup failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
@@ -42,12 +42,14 @@ services:
     image: mazzolino/restic:1.8
     container_name: resticPrune-${RESTIC_BACKUP_HOST}
     restart: unless-stopped
+    profiles:
+      - prune
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
       POST_COMMANDS_FAILURE: |-
         curl -s -X POST --data "{\"title\": \"Prune failed\", \"body\": \"Prune failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      PRUNE_CRON: "0 0 4 * * *"
+      PRUNE_CRON: ${RESTIC_PRUNE_CRON-"0 0 4 * * *"}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Missing environment variable see readme}
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?Missing environment variable see readme}
       RUN_ON_STARTUP: "false"
@@ -60,10 +62,12 @@ services:
     image: mazzolino/restic:1.8
     container_name: resticCheck-${RESTIC_BACKUP_HOST}
     restart: unless-stopped
+    profiles:
+      - check
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      CHECK_CRON: "0 15 5 * * *"
+      CHECK_CRON: ${RESTIC_CHECK_CRON-"0 15 5 * * *"}
       POST_COMMANDS_FAILURE: |-
         curl -s -X POST --data "{\"title\": \"Check failed\", \"body\": \"Check failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
       RESTIC_CHECK_ARGS: >-
