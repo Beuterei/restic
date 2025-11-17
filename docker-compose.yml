@@ -4,18 +4,27 @@ services:
   restic-backup:
     image: mazzolino/restic:1.8
     restart: unless-stopped
+    container_name: resticBackup-${RESTIC_BACKUP_HOST}
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
       BACKUP_CRON: "0 30 3 * * *"
-      POST_COMMANDS_EXIT: echo "Backup completed for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}"
+      POST_COMMANDS_EXIT: |-
+        if [ -f /tmp/stopped_containers.txt ] && [ -s /tmp/stopped_containers.txt ]; then
+          docker start $(cat /tmp/stopped_containers.txt)
+          rm -f /tmp/stopped_containers.txt
+        fi
       POST_COMMANDS_FAILURE: |-
         curl -s -X POST --data "{\"title\": \"Backup failed\", \"body\": \"Backup failed for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
       POST_COMMANDS_INCOMPLETE: |-
         curl -s -X POST --data "{\"title\": \"Backup incomplete\", \"body\": \"Backup incomplete for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
       POST_COMMANDS_SUCCESS: |-
         curl -s -X POST --data "{\"title\": \"Backup completed\", \"body\": \"Backup completed for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      PRE_COMMANDS: echo "Backup started for ${RESTIC_BACKUP_HOST:? Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}"
+      PRE_COMMANDS: |-
+        docker ps --filter "status=running" --format "{{.ID}} {{.Names}}" | grep -vE "restic|notify" | awk '{print $1}' > /tmp/stopped_containers.txt
+        if [ -s /tmp/stopped_containers.txt ]; then
+          docker stop $(cat /tmp/stopped_containers.txt)
+        fi
       RESTIC_BACKUP_ARGS: >-
         --tag ${RESTIC_BACKUP_TAG-docker-volumes}
         --host ${RESTIC_BACKUP_HOST:?Missing environment variable see readme}
@@ -39,7 +48,7 @@ services:
 
   restic-prune:
     image: mazzolino/restic:1.8
-    hostname: docker
+    container_name: resticPrune-${RESTIC_BACKUP_HOST}
     restart: unless-stopped
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
@@ -57,7 +66,7 @@ services:
 
   restic-check:
     image: mazzolino/restic:1.8
-    hostname: docker
+    container_name: resticCheck-${RESTIC_BACKUP_HOST}
     restart: unless-stopped
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
@@ -77,7 +86,7 @@ services:
 
   notify:
     image: mazzolino/apprise-microservice:0.3
-    ports:
-      - 3330:5000
+    container_name: notify-${RESTIC_BACKUP_HOST}
+    restart: unless-stopped
     environment:
       NOTIFICATION_URLS: ${APPRISE_NOTIFICATION_URLS:?Missing environment variable see readme}
