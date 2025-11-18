@@ -90,24 +90,61 @@ docker-compose --env-file ./.env.local up --build -d
 
 Overwrite variables as needed (format: `{variable name}={variable value}`).
 
-| Variable                    | Description                                                                                     | Default value            | Required |
-| --------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `APPRISE_NOTIFICATION_URLS` | Apprise notification URLs (see [Apprise Docs](https://github.com/caronc/apprise))               | none                     | true     |
-| `AWS_ACCESS_KEY_ID`         | AWS access key ID for S3 repository access                                                      | none                     | true     |
-| `AWS_SECRET_ACCESS_KEY`     | AWS secret access key for S3 repository access                                                  | none                     | true     |
-| `RESTIC_BACKUP_CRON`        | GoCron schedule to run backup                                                                   | `0 30 3 * * *`           | false    |
-| `RESTIC_BACKUP_HOST`        | Host name identifier for backups                                                                | none                     | true     |
-| `RESTIC_BACKUP_TAG`         | Tag for backup snapshots                                                                        | `docker-volumes`         | false    |
-| `RESTIC_CHECK_ARGS`         | Additional arguments for restic check command                                                   | `--read-data-subset=10%` | false    |
-| `RESTIC_CHECK_CRON`         | GoCron schedule to run repository check                                                         | `0 15 5 * * *`           | false    |
-| `RESTIC_KEEP_DAILY`         | For the last `n` days which have one or more snapshots, only keep the last one for that day     | `7`                      | false    |
-| `RESTIC_KEEP_LAST`          | Never delete the `n` last (most recent) snapshots                                               | `30`                     | false    |
-| `RESTIC_KEEP_MONTHLY`       | For the last `n` months which have one or more snapshots, only keep the last one for that month | `12`                     | false    |
-| `RESTIC_KEEP_WEEKLY`        | For the last `n` weeks which have one or more snapshots, only keep the last one for that week   | `5`                      | false    |
-| `RESTIC_PASSWORD`           | Password for restic repository                                                                  | none                     | true     |
-| `RESTIC_PRUNE_CRON`         | GoCron schedule to run repository prune                                                         | `0 0 4 * * *`            | false    |
-| `RESTIC_REPOSITORY`         | Repository location (see [Restic Docs](https://restic.readthedocs.io/))                         | none                     | true     |
-| `RESTIC_TZ`                 | Timezone for cron schedules                                                                     | `Europe/Berlin`          | false    |
+| Variable                             | Description                                                                                     | Default value            | Required |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------ | -------- |
+| `AWS_ACCESS_KEY_ID`                  | AWS access key ID for S3 repository access                                                      | none                     | true     |
+| `AWS_SECRET_ACCESS_KEY`              | AWS secret access key for S3 repository access                                                  | none                     | true     |
+| `HEALTHCHECKS_URL_BACKUP_START`      | Monitoring URL for backup start signal                                                          | none                     | false    |
+| `HEALTHCHECKS_URL_BACKUP_SUCCESS`    | Monitoring URL for backup success signal                                                        | none                     | false    |
+| `HEALTHCHECKS_URL_BACKUP_FAIL`       | Monitoring URL for backup failure signal                                                        | none                     | false    |
+| `HEALTHCHECKS_URL_BACKUP_INCOMPLETE` | Monitoring URL for backup incomplete signal                                                     | none                     | false    |
+| `HEALTHCHECKS_URL_PRUNE_START`       | Monitoring URL for prune start signal                                                           | none                     | false    |
+| `HEALTHCHECKS_URL_PRUNE_SUCCESS`     | Monitoring URL for prune success signal                                                         | none                     | false    |
+| `HEALTHCHECKS_URL_PRUNE_FAIL`        | Monitoring URL for prune failure signal                                                         | none                     | false    |
+| `HEALTHCHECKS_URL_CHECK_START`       | Monitoring URL for check start signal                                                           | none                     | false    |
+| `HEALTHCHECKS_URL_CHECK_SUCCESS`     | Monitoring URL for check success signal                                                         | none                     | false    |
+| `HEALTHCHECKS_URL_CHECK_FAIL`        | Monitoring URL for check failure signal                                                         | none                     | false    |
+| `RESTIC_BACKUP_CRON`                 | GoCron schedule to run backup                                                                   | `0 0 5 * * *`            | false    |
+| `RESTIC_BACKUP_HOST`                 | Host name identifier for backups                                                                | none                     | true     |
+| `RESTIC_BACKUP_TAG`                  | Tag for backup snapshots                                                                        | `docker-volumes`         | false    |
+| `RESTIC_CHECK_ARGS`                  | Additional arguments for restic check command                                                   | `--read-data-subset=10%` | false    |
+| `RESTIC_CHECK_CRON`                  | GoCron schedule to run repository check                                                         | `0 0 7 * * *`            | false    |
+| `RESTIC_KEEP_DAILY`                  | For the last `n` days which have one or more snapshots, only keep the last one for that day     | `7`                      | false    |
+| `RESTIC_KEEP_LAST`                   | Never delete the `n` last (most recent) snapshots                                               | `30`                     | false    |
+| `RESTIC_KEEP_MONTHLY`                | For the last `n` months which have one or more snapshots, only keep the last one for that month | `12`                     | false    |
+| `RESTIC_KEEP_WEEKLY`                 | For the last `n` weeks which have one or more snapshots, only keep the last one for that week   | `5`                      | false    |
+| `RESTIC_PASSWORD`                    | Password for restic repository                                                                  | none                     | true     |
+| `RESTIC_PRUNE_CRON`                  | GoCron schedule to run repository prune                                                         | `0 0 6 * * *`            | false    |
+| `RESTIC_REPOSITORY`                  | Repository location (see [Restic Docs](https://restic.readthedocs.io/))                         | none                     | true     |
+| `RESTIC_TZ`                          | Timezone for cron schedules                                                                     | `Europe/Berlin`          | false    |
+
+### Monitoring Integration Example
+
+You can integrate monitoring services to track your backup, prune, and check operations using the UUID pattern.
+
+**Example `.env.local` configuration:**
+
+```bash
+# Backup monitoring (using UUID pattern)
+HEALTHCHECKS_URL_BACKUP_START=https://hc-ping.com/<uuid>/start
+HEALTHCHECKS_URL_BACKUP_SUCCESS=https://hc-ping.com/<uuid>
+HEALTHCHECKS_URL_BACKUP_FAIL=https://hc-ping.com/<uuid>/fail
+HEALTHCHECKS_URL_BACKUP_INCOMPLETE=https://hc-ping.com/<uuid>/fail
+
+# Prune monitoring (using UUID pattern)
+HEALTHCHECKS_URL_PRUNE_START=https://hc-ping.com/<uuid>/start
+HEALTHCHECKS_URL_PRUNE_SUCCESS=https://hc-ping.com/<uuid>
+HEALTHCHECKS_URL_PRUNE_FAIL=https://hc-ping.com/<uuid>/fail
+
+# Check monitoring (using UUID pattern)
+HEALTHCHECKS_URL_CHECK_START=https://hc-ping.com/<uuid>/start
+HEALTHCHECKS_URL_CHECK_SUCCESS=https://hc-ping.com/<uuid>
+HEALTHCHECKS_URL_CHECK_FAIL=https://hc-ping.com/<uuid>/fail
+```
+
+The script automatically includes a run ID (`rid`) parameter in all ping requests to enable accurate duration tracking.
+
+**Note:** If a monitoring URL variable is not set, the corresponding ping request will be skipped silently and the operation will continue normally.
 
 ### Single Host vs Multi-Host Configuration
 

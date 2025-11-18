@@ -8,15 +8,16 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      BACKUP_CRON: ${RESTIC_BACKUP_CRON-"0 30 3 * * *"}
-      POST_COMMANDS_EXIT: if [ -f /tmp/stopped_containers.txt ] && [ -s /tmp/stopped_containers.txt ]; then docker start $$(cat /tmp/stopped_containers.txt); rm -f /tmp/stopped_containers.txt; fi
-      POST_COMMANDS_FAILURE: |-
-        curl -s -X POST --data "{\"title\": \"Backup failed\", \"body\": \"Backup failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      POST_COMMANDS_INCOMPLETE: |-
-        curl -s -X POST --data "{\"title\": \"Backup incomplete\", \"body\": \"Backup incomplete for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      POST_COMMANDS_SUCCESS: |-
-        curl -s -X POST --data "{\"title\": \"Backup completed\", \"body\": \"Backup completed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      PRE_COMMANDS: docker ps --filter "status=running" --format "{{.ID}} {{.Names}}" | grep -vE "restic|notify" | awk '{print $$1}' > /tmp/stopped_containers.txt; if [ -s /tmp/stopped_containers.txt ]; then docker stop $$(cat /tmp/stopped_containers.txt); fi
+      BACKUP_CRON: ${RESTIC_BACKUP_CRON-"0 0 5 * * *"}
+      POST_COMMANDS_EXIT: if [ -n "$$STOPPED_CONTAINERS" ]; then docker start $$STOPPED_CONTAINERS; fi
+      POST_COMMANDS_FAILURE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_FAIL:-}?rid=$$RID" || true
+      POST_COMMANDS_INCOMPLETE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_INCOMPLETE:-}?rid=$$RID" || true
+      POST_COMMANDS_SUCCESS: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_SUCCESS:-}?rid=$$RID" || true
+      PRE_COMMANDS: |-
+        export RID=$$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "")
+        curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_START:-}?rid=$$RID" || true
+        export STOPPED_CONTAINERS=$$(docker ps --filter "status=running" --format "{{.ID}} {{.Names}}" | grep -vE "restic" | awk '{print $$1}' | tr '\n' ' ' || echo "")
+        if [ -n "$$STOPPED_CONTAINERS" ]; then docker stop $$STOPPED_CONTAINERS > /dev/null 2>&1 || true; fi
       RESTIC_BACKUP_ARGS: >-
         --tag ${RESTIC_BACKUP_TAG-docker-volumes}
         --host ${RESTIC_BACKUP_HOST:?Missing environment variable see readme}
@@ -35,8 +36,6 @@ services:
     volumes:
       - /var/lib/docker/volumes:/mnt/volumes:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - notify
 
   restic-prune:
     image: mazzolino/restic:1.8
@@ -47,16 +46,17 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      POST_COMMANDS_FAILURE: |-
-        curl -s -X POST --data "{\"title\": \"Prune failed\", \"body\": \"Prune failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
-      PRUNE_CRON: ${RESTIC_PRUNE_CRON-"0 0 4 * * *"}
+      POST_COMMANDS_FAILURE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_PRUNE_FAIL:-}?rid=$$RID" || true
+      POST_COMMANDS_SUCCESS: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_PRUNE_SUCCESS:-}?rid=$$RID" || true
+      PRE_COMMANDS: |-
+        export RID=$$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "")
+        curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_PRUNE_START:-}?rid=$$RID" || true
+      PRUNE_CRON: ${RESTIC_PRUNE_CRON-"0 0 6 * * *"}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Missing environment variable see readme}
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?Missing environment variable see readme}
       RUN_ON_STARTUP: "false"
       SKIP_INIT: "true"
       TZ: ${RESTIC_TZ-Europe/Berlin}
-    depends_on:
-      - notify
 
   restic-check:
     image: mazzolino/restic:1.8
@@ -67,9 +67,12 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      CHECK_CRON: ${RESTIC_CHECK_CRON-"0 15 5 * * *"}
-      POST_COMMANDS_FAILURE: |-
-        curl -s -X POST --data "{\"title\": \"Check failed\", \"body\": \"Check failed for ${RESTIC_BACKUP_HOST:?Missing environment variable see readme} with tag ${RESTIC_BACKUP_TAG-docker-volumes}\"}" http://notify:5000
+      CHECK_CRON: ${RESTIC_CHECK_CRON-"0 0 7 * * *"}
+      POST_COMMANDS_FAILURE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_CHECK_FAIL:-}?rid=$$RID" || true
+      POST_COMMANDS_SUCCESS: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_CHECK_SUCCESS:-}?rid=$$RID" || true
+      PRE_COMMANDS: |-
+        export RID=$$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "")
+        curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_CHECK_START:-}?rid=$$RID" || true
       RESTIC_CHECK_ARGS: >-
         --read-data-subset=10%
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Missing environment variable see readme}
@@ -77,12 +80,3 @@ services:
       RUN_ON_STARTUP: "false"
       SKIP_INIT: "true"
       TZ: ${RESTIC_TZ-Europe/Berlin}
-    depends_on:
-      - notify
-
-  notify:
-    image: mazzolino/apprise-microservice:0.3
-    container_name: notify-${RESTIC_BACKUP_HOST}
-    restart: unless-stopped
-    environment:
-      NOTIFICATION_URLS: ${APPRISE_NOTIFICATION_URLS:?Missing environment variable see readme}
