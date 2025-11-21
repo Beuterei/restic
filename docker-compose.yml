@@ -8,7 +8,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      BACKUP_CRON: ${RESTIC_BACKUP_CRON-"0 0 5 * * *"}
+      BACKUP_CRON: ${RESTIC_BACKUP_CRON-0 0 5 * * *}
       POST_COMMANDS_EXIT: if [ -n "$$STOPPED_CONTAINERS" ]; then docker start $$STOPPED_CONTAINERS; fi
       POST_COMMANDS_FAILURE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_FAIL:-}?rid=$$RID" || true
       POST_COMMANDS_INCOMPLETE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_BACKUP_INCOMPLETE:-}?rid=$$RID" || true
@@ -51,7 +51,7 @@ services:
       PRE_COMMANDS: |-
         export RID=$$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "")
         curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_PRUNE_START:-}?rid=$$RID" || true
-      PRUNE_CRON: ${RESTIC_PRUNE_CRON-"0 0 6 * * *"}
+      PRUNE_CRON: ${RESTIC_PRUNE_CRON-0 0 6 * * *}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Missing environment variable see readme}
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?Missing environment variable see readme}
       RUN_ON_STARTUP: "false"
@@ -67,7 +67,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Missing environment variable see readme}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Missing environment variable see readme}
-      CHECK_CRON: ${RESTIC_CHECK_CRON-"0 0 7 * * *"}
+      CHECK_CRON: ${RESTIC_CHECK_CRON-0 0 7 * * *}
       POST_COMMANDS_FAILURE: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_CHECK_FAIL:-}?rid=$$RID" || true
       POST_COMMANDS_SUCCESS: curl -fsS -m 10 --retry 3 -X POST "${HEALTHCHECKS_URL_CHECK_SUCCESS:-}?rid=$$RID" || true
       PRE_COMMANDS: |-
