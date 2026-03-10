@@ -116,6 +116,7 @@ Overwrite variables as needed (format: `{variable name}={variable value}`).
 | `RESTIC_PASSWORD`                    | Password for restic repository                                                                  | none                     | true     |
 | `RESTIC_PRUNE_CRON`                  | GoCron schedule to run repository prune                                                         | `0 0 6 * * *`            | false    |
 | `RESTIC_REPOSITORY`                  | Repository location (see [Restic Docs](https://restic.readthedocs.io/))                         | none                     | true     |
+| `RESTIC_STOP_BLACKLIST`              | Pipe-separated container name patterns to keep running during backup (e.g. `unbound\|pihole`)   | none                     | false    |
 | `RESTIC_TZ`                          | Timezone for cron schedules                                                                     | `Europe/Berlin`          | false    |
 
 ### Monitoring Integration Example
